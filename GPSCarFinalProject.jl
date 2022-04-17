@@ -24,18 +24,20 @@ module GPSCarFinalProject
 
     export
         LocalGPSCarMDP,
-        GlobalGPSCarWorld
+        GlobalGPSCarWorld,
+        GPSCarState,
+        actiondir
+        
 
     mutable struct GlobalGPSCarWorld
         size::SVector{2, Int}               # Dimensions of the grid world, 10x7 implies 10 x-positions, 7 y-positions
-        carPosition::SVector{2, Int} 
+        carPosition::SVector{2, Int}        # Positon of the car in the grid world TODO: should this be of type GPSCarState? Probably?
         obstacles::Set{SVector{2, Int}}     # Set of all obstacles in the environment, which are represented as a single x,y coordinate
         blocked::BitArray{2}                # Array that stores whether or not a position contains an obstacle or not (BitArrays are efficient for storing this)
         badRoads::Set{SVector{2, Int}}      # Set of all bad roads in the environment, which are represented as a single x,y coordinate
-        onBadRoad::BitArray{2}               # Array that stores whether or not a position is on a bad road
+        onBadRoad::BitArray{2}              # Array that stores whether or not a position is on a bad road
         goalPosition::SVector{2, Int}       # Goal x,y coordinates in grid world
-        pathToGoal::Set{SVector{2, Int}}    # Ordered list of coordinates that go from car to goal
-        stateIdxDict::Dict                  # Dictionary for storing indices of states, SVector(x,y) -> index
+        pathToGoal::Vector       # Ordered list of coordinates that go from car to goal
     end
 
     # Constructor
@@ -64,16 +66,10 @@ module GPSCarFinalProject
         end
 
         # Initialize path to goal
-        pathToGoal = Set{SVector{2, Int}}()
+        pathToGoal = SVector{2, Int}[]
+      
 
-        # Set dictionary of state indices
-        stateIdxDict=Dict()
-        for (i,pos) in enumerate(Iterators.product(1:size[1], 1:size[2]))
-            stateIdxDict[pos]=i
-        end          
-
-
-        GlobalGPSCarWorld(size, initPosition, obstacles, blocked, badRoads, onBadRoad, goalPosition, pathToGoal, stateIdxDict)
+        GlobalGPSCarWorld(size, initPosition, obstacles, blocked, badRoads, onBadRoad, goalPosition, pathToGoal)
         
     end
 
@@ -91,26 +87,40 @@ module GPSCarFinalProject
         badRoads::Set{SVector{2, Int}}      # Set of bad roads in the local MDP, which are represented as a single x,y coordinate
         onBadRoad::BitArray{2}              # Array that stores whether or not a position is on a bad road
         goalPosition::SVector{2, Int}       # Goal x,y coordinates in grid world
-        pathToGoal::Set{SVector{2, Int}}    # Ordered list of coordinates that go from car to goal, this stores the part of the path that is in the local MDP only
+        pathToGoal::Vector    # Ordered list of coordinates that go from car to goal, this stores the part of the path that is in the local MDP only
         stateIdxDict::Dict                  # Dictionary for storing indices of states, x,y -> index
     end
 
     # Constructor
     function LocalGPSCarMDP(m::GlobalGPSCarWorld; gridRadius=1)
-        LocalGPSCarMDP(gridRadius, m.carPosition, m.obstacles, m.blocked, m.badRoads, m.onBadRoad, m.goalPosition, m.pathToGoal, m.stateIdxDict)
+
+        # x coordinates the car can see
+        stateXCoords = m.carPosition[1] - gridRadius:m.carPosition[1] + gridRadius
+
+        # y coordinates the car can see
+        stateYCoords = m.carPosition[2] - gridRadius:m.carPosition[2] + gridRadius
+
+        # Set dictionary of state indices
+        stateIdxDict=Dict()
+        for (i,pos) in enumerate(Iterators.product(stateXCoords, stateYCoords))
+            stateIdxDict[SVector(pos)]=i    # keys are of type SVector{2,Int} 
+        end
+       
+
+
+        LocalGPSCarMDP(gridRadius, m.carPosition, m.obstacles, m.blocked, m.badRoads, m.onBadRoad, m.goalPosition, m.pathToGoal, stateIdxDict)
     end
 
     # Function that returns the states of the grid world that the car can see
     function GetLocalStates(m::LocalGPSCarMDP)
         # x coordinates the car can see
-        stateXCoords = m.carPosition[1] - m.Radius:m.carPosition[1] + m.Radius
+        stateXCoords = m.carPosition[1] - m.gridRadius:m.carPosition[1] + m.gridRadius
 
         # y coordinates the car can see
-        stateYCoords = m.carPosition[2] - m.Radius:m.carPosition[2] + m.Radius
+        stateYCoords = m.carPosition[2] - m.gridRadius:m.carPosition[2] + m.gridRadius
 
 
         # TODO: If coordinates are negative, set them to 0
-        # TODO: may be possible to use "bounce" function in here to only return states that are unblocked and in the grid world 
         states = vec(collect(GPSCarState(SVector(c[1],c[2])) for c in Iterators.product(stateXCoords, stateYCoords)))
         return states
     end
@@ -138,12 +148,12 @@ module GPSCarFinalProject
 
 
 
-    # set the states, and rewards of the MDP
+    # set the states, and rewards of the local MDP
     # The actions and transitions don't change as the car moves
     # through the grid world but the rewards and states do 
     POMDPs.states(m::LocalGPSCarMDP) = GetLocalStates(m)
     POMDPs.stateindex(m::LocalGPSCarMDP, s) = m.stateIdxDict[s.car] # Index dict maps SVectors not GPSCarState types 
-    POMDPs.actions(m::LocalGPSCarMDP, a) = (:left, :right, :up, :down)
+    POMDPs.actions(m::LocalGPSCarMDP) = (:left, :right, :up, :down)
     POMDPs.actionindex(m::LocalGPSCarMDP, a) = actionind[a]
     POMDPs.discount(m::LocalGPSCarMDP) = 0.95
     
@@ -152,7 +162,11 @@ module GPSCarFinalProject
         # TODO: add some randomness to this
         change = actiondir[a]
         newState = GPSCarState(bounce(m,s.car,change))
-        return Deterministic(newState)
+        if newState in states(m)
+            return Deterministic(newState)
+        else    # Don't leave state space
+            return Deterministic(s)
+        end
     end
 
     function POMDPs.initialstate(m::LocalGPSCarMDP)
@@ -160,7 +174,7 @@ module GPSCarFinalProject
         return Deterministic(GPSCarState(m.carPosition))
     end
 
-
+    # TODO: need to update this to somehow use the path to goal
     function POMDPs.reward(m::LocalGPSCarMDP, s, a, sp)
         if sp == m.goalPosition # TODO: or if sp is on the path to goal
             return 0.0
