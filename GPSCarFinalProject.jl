@@ -21,6 +21,7 @@ module GPSCarFinalProject
     using POMDPSimulators
     using JSON
     using LinearAlgebra
+    using OrderedCollections
 
     export
         LocalGPSCarMDP,
@@ -37,35 +38,43 @@ module GPSCarFinalProject
         badRoads::Set{SVector{2, Int}}      # Set of all bad roads in the environment, which are represented as a single x,y coordinate
         onBadRoad::BitArray{2}              # Array that stores whether or not a position is on a bad road
         goalPosition::SVector{2, Int}       # Goal x,y coordinates in grid world
-        pathToGoal::Vector       # Ordered list of coordinates that go from car to goal
+        pathToGoal::Vector                  # Ordered list of coordinates that go from car to goal
     end
 
     # Constructor
     function GlobalGPSCarWorld(;size=(10,10),initPosition=SVector(2,2),numObstacles=1,numBadRoads=1, goalPosition=SVector(size[1], size[2]))
         obstacles = Set{SVector{2, Int}}()
         badRoads = Set{SVector{2, Int}}()
-
+        rng::AbstractRNG=Random.MersenneTwister(20)
         # Create obstacles
+        println("Creating obstacles...")
         blocked = falses(size...)
         while length(obstacles) < numObstacles
             # TODO: make this random
-            # obs = SVector(rand(rng, 1:size[1]), rand(rng, 1:size[2]))
-            obs = SVector(5,5)
-            push!(obstacles, obs)
-            blocked[obs...] = true
+            obs = SVector(rand(rng, 1:size[1]), rand(rng, 1:size[2]))
+            # obs = SVector(5,5)
+            # Only add obstacles that are not in conflict with goal/initial position
+            if !(obs == initPosition || obs == goalPosition)
+                push!(obstacles, obs)
+                blocked[obs...] = true
+            end
         end
 
         # Create bad roads
+        println("Creating bad roads...")
         onBadRoad = falses(size...)
         while length(badRoads) < numBadRoads
             # TODO: make this random
-            # br = SVector(rand(rng, 1:size[1]), rand(rng, 1:size[2]))
-            br = SVector(2,3)
-            push!(badRoads, br)
-            onBadRoad[br...] = true
+            br = SVector(rand(rng, 1:size[1]), rand(rng, 1:size[2]))
+            # br = SVector(2,3)
+            # Only add bad roads that are not in conflict with goal/initial position
+            if !(br == initPosition || br == goalPosition)
+                push!(badRoads, br)
+                onBadRoad[br...] = true
+            end
         end
 
-        # Initialize path to goal
+        # Initialize path to goal as an empty array
         pathToGoal = SVector{2, Int}[]
       
 
@@ -87,42 +96,57 @@ module GPSCarFinalProject
         badRoads::Set{SVector{2, Int}}      # Set of bad roads in the local MDP, which are represented as a single x,y coordinate
         onBadRoad::BitArray{2}              # Array that stores whether or not a position is on a bad road
         goalPosition::SVector{2, Int}       # Goal x,y coordinates in grid world
-        pathToGoal::Vector    # Ordered list of coordinates that go from car to goal, this stores the part of the path that is in the local MDP only
+        pathToGoal::Vector                  # Ordered list of coordinates that go from car to goal, this stores the part of the path that is in the local MDP only
         stateIdxDict::Dict                  # Dictionary for storing indices of states, x,y -> index
     end
 
     # Constructor
     function LocalGPSCarMDP(m::GlobalGPSCarWorld; gridRadius=1)
 
-        # x coordinates the car can see
-        stateXCoords = m.carPosition[1] - gridRadius:m.carPosition[1] + gridRadius
-
-        # y coordinates the car can see
-        stateYCoords = m.carPosition[2] - gridRadius:m.carPosition[2] + gridRadius
+        localStates = GetLocalStates(m.carPosition, gridRadius)
 
         # Set dictionary of state indices
         stateIdxDict=Dict()
-        for (i,pos) in enumerate(Iterators.product(stateXCoords, stateYCoords))
-            stateIdxDict[SVector(pos)]=i    # keys are of type SVector{2,Int} 
+        for (i,pos) in enumerate(localStates)
+            stateIdxDict[pos] = i   # keys are of type GPSCarState
         end
        
-
 
         LocalGPSCarMDP(gridRadius, m.carPosition, m.obstacles, m.blocked, m.badRoads, m.onBadRoad, m.goalPosition, m.pathToGoal, stateIdxDict)
     end
 
     # Function that returns the states of the grid world that the car can see
-    function GetLocalStates(m::LocalGPSCarMDP)
+    # function GetLocalStates(m::LocalGPSCarMDP)
+    function GetLocalStates(carPosition, sensorRadius)
         # x coordinates the car can see
-        stateXCoords = m.carPosition[1] - m.gridRadius:m.carPosition[1] + m.gridRadius
-
+        stateXCoords = collect(carPosition[1] - sensorRadius:carPosition[1] + sensorRadius)
+        
         # y coordinates the car can see
-        stateYCoords = m.carPosition[2] - m.gridRadius:m.carPosition[2] + m.gridRadius
+        stateYCoords = collect(carPosition[2] - sensorRadius:carPosition[2] + sensorRadius)
 
+        # Check that coordinates are in grid world
+        for i in 1:length(stateXCoords)
+            if stateXCoords[i] < 1
+                stateXCoords[i] = 1
+            # TODO: make this not hardcoded
+            elseif stateXCoords[i] > 10
+                stateXCoords[i] = 10
+            end
+        end
 
-        # TODO: If coordinates are negative, set them to 0
-        states = vec(collect(GPSCarState(SVector(c[1],c[2])) for c in Iterators.product(stateXCoords, stateYCoords)))
-        return states
+        # Check that coordinates are in grid world
+        for i in 1:length(stateYCoords)
+            if stateYCoords[i] < 1
+                stateYCoords[i] = 1
+            # TODO: make this not hardcoded
+            elseif stateYCoords[i] > 10
+                stateYCoords[i] = 10
+            end
+        end
+        
+        states = collect(OrderedSet(GPSCarState(SVector(c[1],c[2])) for c in Iterators.product(stateXCoords, stateYCoords)))    # OrderedSet makes sure there are no duplicates states
+            
+        return states 
     end
 
     # Dictionary that maps actions to indices
@@ -135,8 +159,10 @@ module GPSCarFinalProject
     function bounce(m::LocalGPSCarMDP, pos, change)
         # ensure that new position is within the bounds of the local MDP
         # this means that the agent will not step outside of its vision radius in a single step
-        size = pos .+ m.gridRadius
-        new = clamp.(pos + change, SVector(1,1), size)
+        maxDimsize = pos .+ m.gridRadius
+        # new = clamp.(pos + change, SVector(1,1), maxDimsize)
+        new = clamp.(pos + change, SVector(1,1), SVector(10,10))
+        # println("new: ", new)
         if m.blocked[new[1], new[2]]
             # If blocked, car's position doesn't change
             return pos
@@ -151,8 +177,9 @@ module GPSCarFinalProject
     # set the states, and rewards of the local MDP
     # The actions and transitions don't change as the car moves
     # through the grid world but the rewards and states do 
-    POMDPs.states(m::LocalGPSCarMDP) = GetLocalStates(m)
-    POMDPs.stateindex(m::LocalGPSCarMDP, s) = m.stateIdxDict[s.car] # Index dict maps SVectors not GPSCarState types 
+    POMDPs.states(m::LocalGPSCarMDP) = GetLocalStates(m.carPosition, m.gridRadius)
+    # POMDPs.stateindex(m::LocalGPSCarMDP, s) = m.stateIdxDict[s.car] # Index dict maps SVectors not GPSCarState types 
+    POMDPs.stateindex(m::LocalGPSCarMDP, s) = m.stateIdxDict[s] 
     POMDPs.actions(m::LocalGPSCarMDP) = (:left, :right, :up, :down)
     POMDPs.actionindex(m::LocalGPSCarMDP, a) = actionind[a]
     POMDPs.discount(m::LocalGPSCarMDP) = 0.95
@@ -176,16 +203,25 @@ module GPSCarFinalProject
 
     # TODO: need to update this to somehow use the path to goal
     function POMDPs.reward(m::LocalGPSCarMDP, s, a, sp)
-        if sp == m.goalPosition # TODO: or if sp is on the path to goal
+        # TODO: what happens if we use s instead sp?
+
+
+        # Calculate minimum manhattan distance to path to goal
+        xDistToPath = minimum(abs(sp.car[1] - pathCoordinate[1]) for pathCoordinate in m.pathToGoal)
+        yDistToPath = minimum(abs(sp.car[2] - pathCoordinate[2]) for pathCoordinate in m.pathToGoal)
+        manHatDist = xDistToPath + yDistToPath
+
+        distToGoal = norm(sp.car - m.goalPosition)
+
+        if sp.car == m.goalPosition
             return 0.0
         # If we're on a bad road
-        elseif m.onBadRoad[sp.car[1], sp.car[2]] 
+        elseif m.onBadRoad[sp.car[1], sp.car[2]]
             return -50.0 # large negative number + (r+) 
-        else
-            # return distance to the path to goal  
-            return -10.0
-            # norm(s - m.goal) # (r+)???
-        # TODO: do we want to consider actions at all in reward function?
+        else 
+            # TODO: can use cost of states from global GPS planner here instead
+            # return -manHatDist
+            return -distToGoal
         end
     end
 

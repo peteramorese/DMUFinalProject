@@ -38,50 +38,67 @@ TODO: Main routine will need to be something like
 =#
 
 # 1) Initialize grid world
-gridWorld = GlobalGPSCarWorld()
+@show gridWorld = GlobalGPSCarWorld(numObstacles=10, numBadRoads=10)
+
+# gridWorld = GlobalGPSCarWorld()
 println("INIT POSTION: ", gridWorld.carPosition)
 
+# Create solver to be used on local MDP
+localSolver = ValueIterationSolver(max_iterations=100, belres=1e-6)
+
+# Initialize accumulated reward
+global totalReward = 0.0
+
 # 6) repeat steps 2-5 until terminated
-#   while gridWorld.carPosition != gridWorld.goalPosition
+while gridWorld.carPosition != gridWorld.goalPosition
 
 
-# 2) Compute naive path to goal
-#   pathToGoal is a field of GlobalGPSCarWorld object of type SVector{2, Int}[] (an array of SVectors)
-#   it should contain an ordered set of states that take the car from it's current state to the goal
+    # 2) Compute naive path to goal
+    #   pathToGoal is a field of GlobalGPSCarWorld object of type SVector{2, Int}[] (an array of SVectors)
+    #   it should contain an ordered set of states that take the car from it's current state to the goal
 
-# THIS IS A TEST PATH
-testPathToGoal = [
-gridWorld.carPosition,  # 2,2
-SVector(2,3),
-SVector(2,4),
-SVector(2,5),
-SVector(2,6),
-SVector(2,7),
-SVector(2,8),
-SVector(2,9),
-SVector(2,10),
-SVector(3,10),
-SVector(4,10),
-SVector(5,10),
-SVector(6,10),
-SVector(7,10),
-SVector(8,10),
-SVector(9,10),
-SVector(10,10)]
+    # THIS IS A TEST PATH
+    local testPathToGoal = [
+    gridWorld.carPosition,  # 2,2
+    SVector(2,3),
+    SVector(2,4),
+    SVector(2,5),
+    SVector(2,6),
+    SVector(2,7),
+    SVector(2,8),
+    SVector(2,9),
+    SVector(2,10),
+    SVector(3,10),
+    SVector(4,10),
+    SVector(5,10),
+    SVector(6,10),
+    SVector(7,10),
+    SVector(8,10),
+    SVector(9,10),
+    SVector(10,10)]
 
-gridWorld.pathToGoal = testPathToGoal
+    gridWorld.pathToGoal = testPathToGoal
+    
+    # 3) Initialize and solve the local MDP
+    local sensorRadius = 1  # the distance in grid world the car can sense around itself
+    local localMDP = LocalGPSCarMDP(gridWorld, gridRadius = sensorRadius)
+    println("LOCAL STATES: ", states(localMDP))
+    local localPolicy = solve(localSolver, localMDP)
 
-# 3) Initialize and solve the local MDP
-sensorRadius = 1  # the distance in grid world the car can sense around itself
-localMDP = LocalGPSCarMDP(gridWorld, gridRadius = sensorRadius)
-localSolver = ValueIterationSolver(max_iterations=100, belres=1e-6, verbose=true)
-localPolicy = solve(localSolver, localMDP)
+    # 4) Take a step using the action calculated by solving MDP
+    local carAction = action(localPolicy, GPSCarState(gridWorld.carPosition))
 
-# 4) Take a step using the action calculated by solving MDP
-carAction = actiondir[action(localPolicy, GPSCarState(gridWorld.carPosition))]
 
-# 5) Update global grid world
-gridWorld.carPosition = gridWorld.carPosition + carAction
+    local carActionDirection = actiondir[carAction]
 
-println("NEW POSTION: ", gridWorld.carPosition)
+    # 5) Update global grid world
+    gridWorld.carPosition = gridWorld.carPosition + carActionDirection
+    println("NEW POSTION: ", gridWorld.carPosition)
+
+    local rewardForAction = reward(localMDP, GPSCarState(gridWorld.carPosition), carAction, GPSCarState(gridWorld.carPosition))
+    global totalReward += rewardForAction
+    println("Accumulated Reward: ", totalReward)
+
+end
+
 
