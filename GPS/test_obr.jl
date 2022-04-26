@@ -6,30 +6,27 @@ include("OptimalBackwardsReachability.jl")
 
 # Create Deterministic Grid World
 dgw = GridWorldGraph.DeterministicGridWorld(grid_size_x=3, grid_size_y=3)
-#println(vertices(dgw.G))
+
+# Create vector of goal states
 goal_states = Vector{SVector{2, Int}}()
 goal1 = SVector{2, Int}(3,3)
 goal2 = SVector{2, Int}(3,2)
 push!(goal_states, goal1)
-#push!(goal_states, goal2)
 println("Goal states:", goal_states)
+
+# Run obr to get the state weights
 println("Run OBR: ", OBReachability.obr(dgw, goal_states))
 
+# Update some edge weights (returns false if edge was not found)
 success = GridWorldGraph.update_edge_weight!(dgw, SVector{2,Int}(2,3), :right, 1.2)
 success = GridWorldGraph.update_edge_weight!(dgw, SVector{2,Int}(3,2), :up, 1.2)
-
 if !success
     println("Failed to update edge weights")
 end
 
-println("OBR: ", OBReachability.obr(dgw, goal_states))
-
-
-# Test update edge weight using state and action
-#println(dgw.W)
-#didwork = GridWorldGraph.update_edge_weight!(dgw, SVector{2,Int}(1,2), "up", 1.2)
-#println(dgw.W)
-#println(typeof(dgw.G))
+# Verify that the state weights have increased due to increased transition cost
+new_state_weights = OBReachability.obr(dgw, goal_states) 
+println("OBR: ", new_state_weights)
 
 
 #while current_state != goal
