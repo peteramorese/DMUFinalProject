@@ -8,10 +8,13 @@ module GridWorldGraph
     using StaticArrays
 
     mutable struct DeterministicGridWorld
-        G
+        G::LabelledGraph # Graph
+        rG::LabelledGraph # Reverse Graph
         W::Dict{String, Float64}
+        #rW::Dict{String, Float64}
         grid_size_x::Int
         grid_size_y::Int
+        actions::Vector{Symbol}
     end
 
     function state_lbls_to_edge_lbl(src::String, dst::String)
@@ -22,7 +25,7 @@ module GridWorldGraph
         return string(string(edge.src), "_", string(edge.dst))
     end
 
-    function create_grid!(graph::LabelledGraph, grid_size_x::Int64, grid_size_y::Int64)
+    function create_grid!(graph::LabelledGraph, r_graph::LabelledGraph, grid_size_x::Int64, grid_size_y::Int64)
         function safe_add_vertex!(graph, v)
             if !has_vertex(graph, v)
                 add_vertex!(graph, v)
@@ -33,11 +36,13 @@ module GridWorldGraph
             for ii=1:grid_size_y
                 src_state = string(string(i),",", string(ii))
                 safe_add_vertex!(graph, src_state)
+                safe_add_vertex!(r_graph, src_state)
                 for dir=1:4
                     if dir == 1 # left
                         if i != 1
                             dst_state = string(string(i-1),",", string(ii))
                             safe_add_vertex!(graph, dst_state)
+                            safe_add_vertex!(r_graph, dst_state)
                             
                             # Weight the edge
                             edge_label = state_lbls_to_edge_lbl(src_state, dst_state)
@@ -45,11 +50,13 @@ module GridWorldGraph
 
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
+                            add_edge!(r_graph, dst_state, src_state)
                         end
                     elseif dir == 2 # right
                         if i != grid_size_x
                             dst_state = string(string(i+1),",", string(ii))
                             safe_add_vertex!(graph, dst_state)
+                            safe_add_vertex!(r_graph, dst_state)
                             
                             # Weight the edge
                             edge_label = state_lbls_to_edge_lbl(src_state, dst_state)
@@ -57,11 +64,13 @@ module GridWorldGraph
 
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
+                            add_edge!(r_graph, dst_state, src_state)
                         end
                     elseif dir == 3 # down
                         if ii != 1
                             dst_state = string(string(i),",", string(ii-1))
                             safe_add_vertex!(graph, dst_state)
+                            safe_add_vertex!(r_graph, dst_state)
                             
                             # Weight the edge
                             edge_label = state_lbls_to_edge_lbl(src_state, dst_state)
@@ -69,11 +78,13 @@ module GridWorldGraph
 
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
+                            add_edge!(r_graph, dst_state, src_state)
                         end
                     elseif dir == 4 # up
                         if ii != grid_size_y
                             dst_state = string(string(i),",", string(ii+1))
                             safe_add_vertex!(graph, dst_state)
+                            safe_add_vertex!(r_graph, dst_state)
                             
                             # Weight the edge
                             edge_label = state_lbls_to_edge_lbl(src_state, dst_state)
@@ -81,6 +92,7 @@ module GridWorldGraph
 
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
+                            add_edge!(r_graph, dst_state, src_state)
                         end
                     end
                 end
@@ -92,13 +104,26 @@ module GridWorldGraph
     # CTOR
     function DeterministicGridWorld(;grid_size_x=10,grid_size_y=10)
         g_ = path_digraph(1)
+        r_g_ = path_digraph(1)
         G = LabelledGraph([""], g_)
-        W = create_grid!(G, grid_size_x, grid_size_y)
-        DeterministicGridWorld(G, W, grid_size_x, grid_size_y)
+        r_G = LabelledGraph([""], r_g_)
+        W = create_grid!(G, r_G, grid_size_x, grid_size_y)
+        actions = [:left, :right, :up, :down]
+        DeterministicGridWorld(G, r_G, W, grid_size_x, grid_size_y, actions)
     end
 
     function state_to_str(state::SVector{2,Int})
         return string(string(state[1]),",",string(state[2]))
+    end
+
+    function state_lbls_to_edge_lbl(src_state::SVector{2,Int}, dst_state::SVector{2,Int})
+        return string(state_to_str(src_state), "_", state_to_str(dst_state))
+    end
+
+    function str_to_state(state_str::String)
+        sub_str = split(state_str, ",")
+        state = SVector{2, Int}(parse(Int64, sub_str[1]), parse(Int64, sub_str[2]))
+        return state
     end
 
     function update_edge_weight!(dgw::DeterministicGridWorld, edge::String, weight::Float64)
@@ -110,28 +135,30 @@ module GridWorldGraph
         end
     end
 
-    function update_edge_weight!(dgw::DeterministicGridWorld, state::SVector{2,Int}, action::String, weight::Float64)
+    function update_edge_weight!(dgw::DeterministicGridWorld, state::SVector{2,Int}, action::Symbol, weight::Float64)
         # Check if action is allowed:
-        if action == "left" 
+        if action == :left
             if state[1] == 1
                 return false
             end
             dst_state = SVector{2,Int}(state[1] - 1, state[2])
-        elseif action == "right"
+        elseif action == :right
             if state[1] == dgw.grid_size_x
                 return false
             end
             dst_state = SVector{2,Int}(state[1] + 1, state[2])
-        elseif action == "down"
+        elseif action == :down
             if state[2] == 1
                 return false
             end
             dst_state = SVector{2,Int}(state[1], state[2] - 1)
-        elseif action == "up"
+        elseif action == :up
             if state[2] == dgw.grid_size_y
                 return false
             end
             dst_state = SVector{2,Int}(state[1], state[2] + 1)
+        else
+            return false
         end
         edge = state_lbls_to_edge_lbl(state_to_str(state), state_to_str(dst_state))
         if haskey(dgw.W, edge)
@@ -141,4 +168,11 @@ module GridWorldGraph
             return false
         end
     end
+
+    function update_state_weight!(dgw::DeterministicGridWorld, state::SVector{2,Int}, weight::Float64) 
+        for a in dgw.actions
+            update_edge_weight!(dgw, state, a, weight)
+        end
+    end
+
 end
