@@ -11,6 +11,7 @@
 
 module GPSCarFinalProject
 
+
     using POMDPs
     using StaticArrays
     using POMDPModelTools
@@ -22,6 +23,10 @@ module GPSCarFinalProject
     using JSON
     using LinearAlgebra
     using OrderedCollections
+    
+    include("GPS/GridWorldGraph.jl")
+    using .GridWorldGraph
+
 
     export
         LocalGPSCarMDP,
@@ -29,7 +34,7 @@ module GPSCarFinalProject
         GPSCarState,
         actiondir
         
-
+    # TODO: make a DeterministicGridWorld object a field of this struct and replace "size" field of this (use grid_size_x and grid_size_y instead)
     mutable struct GlobalGPSCarWorld
         size::SVector{2, Int}               # Dimensions of the grid world, 10x7 implies 10 x-positions, 7 y-positions
         carPosition::SVector{2, Int}        # Positon of the car in the grid world TODO: should this be of type GPSCarState? Probably?
@@ -38,11 +43,12 @@ module GPSCarFinalProject
         badRoads::Set{SVector{2, Int}}      # Set of all bad roads in the environment, which are represented as a single x,y coordinate
         onBadRoad::BitArray{2}              # Array that stores whether or not a position is on a bad road
         goalPosition::SVector{2, Int}       # Goal x,y coordinates in grid world
-        pathToGoal::Vector                  # Ordered list of coordinates that go from car to goal
+        pathToGoal::Vector                  # Ordered list of coordinates that go from car to goal  TODO: can probably get rid of this
+        graph::GridWorldGraph.DeterministicGridWorld       # Graph representation of grid world
     end
 
     # Constructor
-    function GlobalGPSCarWorld(;size=(10,10),initPosition=SVector(2,2),numObstacles=1,numBadRoads=1, goalPosition=SVector(size[1], size[2]))
+    function GlobalGPSCarWorld(;size=SVector(10,10),initPosition=SVector(2,2),numObstacles=1,numBadRoads=1, goalPosition=SVector(size[1], size[2]))
         obstacles = Set{SVector{2, Int}}()
         badRoads = Set{SVector{2, Int}}()
         rng::AbstractRNG=Random.MersenneTwister(20)
@@ -77,10 +83,16 @@ module GPSCarFinalProject
         # Initialize path to goal as an empty array
         pathToGoal = SVector{2, Int}[]
       
+        # Create the graph representation of grid world
+        # TODO: need to make graph aware of obstacles
+        # println("Creating graph...")
+        graph = GridWorldGraph.DeterministicGridWorld(grid_size_x = size[1], grid_size_y = size[2])
 
-        GlobalGPSCarWorld(size, initPosition, obstacles, blocked, badRoads, onBadRoad, goalPosition, pathToGoal)
+        GlobalGPSCarWorld(size, initPosition, obstacles, blocked, badRoads, onBadRoad, goalPosition, pathToGoal, graph)
         
-    end
+    end #= GlobalGPSCarWorld =#
+
+
 
     # State for the object that is moving in the environment
     struct GPSCarState
@@ -88,6 +100,7 @@ module GPSCarFinalProject
         car::SVector{2, Int} 
     end
 
+    # TODO: add local edge weights to this object so we can use them to calculate the 
     struct LocalGPSCarMDP <: MDP{GPSCarState, Symbol}
         gridRadius::Int                     # Radius of the local MDP (what the car can see with it's sensor)
         carPosition::SVector{2, Int}        # Position of the car in the grid world
@@ -98,6 +111,7 @@ module GPSCarFinalProject
         goalPosition::SVector{2, Int}       # Goal x,y coordinates in grid world
         pathToGoal::Vector                  # Ordered list of coordinates that go from car to goal, this stores the part of the path that is in the local MDP only
         stateIdxDict::Dict                  # Dictionary for storing indices of states, x,y -> index
+        edgeWeights::Dict{String, Float64}  # Weights from graph
     end
 
     # Constructor
@@ -111,9 +125,11 @@ module GPSCarFinalProject
             stateIdxDict[pos] = i   # keys are of type GPSCarState
         end
        
+        edgeWeights = m.graph.W
 
-        LocalGPSCarMDP(gridRadius, m.carPosition, m.obstacles, m.blocked, m.badRoads, m.onBadRoad, m.goalPosition, m.pathToGoal, stateIdxDict)
-    end
+        LocalGPSCarMDP(gridRadius, m.carPosition, m.obstacles, m.blocked, m.badRoads, m.onBadRoad, m.goalPosition, m.pathToGoal, stateIdxDict, edgeWeights)
+    end #= LocalGpsCarMDP =#
+    
 
     # Function that returns the states of the grid world that the car can see
     # function GetLocalStates(m::LocalGPSCarMDP)
@@ -147,7 +163,7 @@ module GPSCarFinalProject
         states = collect(OrderedSet(GPSCarState(SVector(c[1],c[2])) for c in Iterators.product(stateXCoords, stateYCoords)))    # OrderedSet makes sure there are no duplicates states
             
         return states 
-    end
+    end #= GetLocalStates =#
 
     # Dictionary that maps actions to indices
     const actionind = Dict(:left=>1, :right=>2, :up=>3, :down=>4)
@@ -170,7 +186,7 @@ module GPSCarFinalProject
             # If new position isn't blocked, then return new position
             return new
         end
-    end
+    end #= bounce =#
 
 
 
@@ -194,7 +210,7 @@ module GPSCarFinalProject
         else    # Don't leave state space
             return Deterministic(s)
         end
-    end
+    end #= transition =#
 
     function POMDPs.initialstate(m::LocalGPSCarMDP)
         # The starting position in the local MDP is the car's position in the global world
@@ -204,30 +220,40 @@ module GPSCarFinalProject
     # TODO: need to update this to somehow use the path to goal
     function POMDPs.reward(m::LocalGPSCarMDP, s, a, sp)
         # TODO: what happens if we use s instead sp?
+        # TODO: after adding edge weights to LocalGPSCarMDP, use that as the cost
+        # edge_label = state_lbls_to_edge_lbl(s, sp)
+        # edge_weight = m.graph.W[edge_label]
+        # r = -edge_weight (edge weights are a cost)
 
-
-        # Calculate minimum manhattan distance to path to goal
-        xDistToPath = minimum(abs(sp.car[1] - pathCoordinate[1]) for pathCoordinate in m.pathToGoal)
-        yDistToPath = minimum(abs(sp.car[2] - pathCoordinate[2]) for pathCoordinate in m.pathToGoal)
-        manHatDist = xDistToPath + yDistToPath
-
-        distToGoal = norm(sp.car - m.goalPosition)
-
+        # If at the goal
         if sp.car == m.goalPosition
             return 0.0
-        # If we're on a bad road
-        elseif m.onBadRoad[sp.car[1], sp.car[2]]
-            return -50.0 # large negative number + (r+) 
-        else 
-            # TODO: can use cost of states from global GPS planner here instead
-            # return -manHatDist
-            return -distToGoal
+        else
+            # return the "cost" of the edge that connects these states
+            s_str = GridWorldGraph.state_to_str(s.car)  # s is of type GPSCarState (maybe change that)
+            sp_str = GridWorldGraph.state_to_str(sp.car)
+            edgeLabel = GridWorldGraph.state_lbls_to_edge_lbl(s_str, sp_str)
+            return -m.edgeWeights[edgeLabel]
         end
-    end
+
+        # # Calculate minimum manhattan distance to path to goal
+        # xDistToPath = minimum(abs(sp.car[1] - pathCoordinate[1]) for pathCoordinate in m.pathToGoal)
+        # yDistToPath = minimum(abs(sp.car[2] - pathCoordinate[2]) for pathCoordinate in m.pathToGoal)
+        # manHatDist = xDistToPath + yDistToPath
+
+        # distToGoal = norm(sp.car - m.goalPosition)
+
+        # if sp.car == m.goalPosition
+        #     return 0.0
+        # # If we're on a bad road
+        # elseif m.onBadRoad[sp.car[1], sp.car[2]]
+        #     return -50.0 # large negative number + (r+) 
+        # else 
+        #     # TODO: can use cost of states from global GPS planner here instead
+        #     # return -manHatDist
+        #     return -distToGoal
+        # end
+    end #= reward =#
 
 
-
-
-
-
-end
+end #= GPSCarFinalProject =#

@@ -7,6 +7,8 @@ module GridWorldGraph
     using LightGraphs
     using StaticArrays
 
+    # TODO: make this objet a field of the GlobalGPSCarWorld struct
+    # TODO: remove the actions field from here
     mutable struct DeterministicGridWorld
         G::LabelledGraph # Graph
         rG::LabelledGraph # Reverse Graph
@@ -102,13 +104,15 @@ module GridWorldGraph
     end
 
     # CTOR
+    # TODO: this will need to be called in the constructor of GlobalGPSCarWorld 
     function DeterministicGridWorld(;grid_size_x=10,grid_size_y=10)
+        println("Creating graph...")
         g_ = path_digraph(1)
         r_g_ = path_digraph(1)
         G = LabelledGraph([""], g_)
         r_G = LabelledGraph([""], r_g_)
         W = create_grid!(G, r_G, grid_size_x, grid_size_y)
-        actions = [:left, :right, :up, :down]
+        actions = [:left, :right, :up, :down]   # TODO: make this an argument of the constructor
         DeterministicGridWorld(G, r_G, W, grid_size_x, grid_size_y, actions)
     end
 

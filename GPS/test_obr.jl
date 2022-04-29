@@ -15,7 +15,7 @@ push!(goal_states, goal1)
 println("Goal states:", goal_states)
 
 # Run obr to get the state weights
-println("Run OBR: ", OBReachability.obr(dgw, goal_states))
+println("Run OBR: ", OBReachability.obr(dgw, goal_states))  # TODO: how often does this need to be called?
 
 # Update some edge weights (returns false if edge was not found)
 success = GridWorldGraph.update_edge_weight!(dgw, SVector{2,Int}(2,3), :right, 1.2)
@@ -28,7 +28,7 @@ end
 new_state_weights = OBReachability.obr(dgw, goal_states) 
 println("OBR: ", new_state_weights)
 
-
+# env = GlobalGPSCarWorld(...)
 #while current_state != goal
 #    weights = obr(dgw)
 #    m = create_local_mdp(env, current_state, weights) # <- convert weights to reward func
