@@ -49,12 +49,62 @@ TODO: Main routine will need to be something like
 #    for s in V: update_ege_weight()
 #    end
 #end
+struct RectangleObstacle
+    lower_left::SVector{2, Int} # Lower left corner of rectangle obstacle
+    upper_right::SVector{2, Int} # Upper right corner of rectangle obstacle
+    function RectangleObstacle(lower_left_::SVector{2, Int}, upper_right_::SVector{2, Int})
+        if lower_left_[1] > upper_right_[1]
+            println("Upper right x index is left of lower left x index")
+        elseif lower_left_[2] > upper_right_[2]
+            println("Upper right y index is left of lower left u index")
+        end
+        new(lower_left_, upper_right_)
+    end
+end
+
 
 function main()
-# 1) Initialize grid world
+# 1) Initialize grid world ########################
 gridWorldsize = SVector(10,10)
+initPosition = SVector(1,5)
 goalPosition = SVector(10,10)
-gridWorld = GlobalGPSCarWorld(size = gridWorldsize, initPosition=SVector(2,2),numObstacles=1,numBadRoads=1, goalPosition = goalPosition)
+obstacles = [RectangleObstacle(SVector(4,5), SVector(6,9)), RectangleObstacle(SVector(8,1), SVector(8,5))]
+bad_roads = [RectangleObstacle(SVector(5,2), SVector(5,4)), RectangleObstacle(SVector(6,2), SVector(7,2))]
+
+function inObstacle(s::SVector{2, Int})
+    for obstacle in obstacles
+        if (s[1] >= obstacle.lower_left[1] && s[1] <= obstacle.upper_right[1]) 
+            if (s[2] >= obstacle.lower_left[2] && s[2] <= obstacle.upper_right[2]) 
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function inBadRoad(s::SVector{2, Int})
+    for bad_road in bad_roads
+        if (s[1] >= bad_road.lower_left[1] && s[1] <= bad_road.upper_right[1]) 
+            if (s[2] >= bad_road.lower_left[2] && s[2] <= bad_road.upper_right[2]) 
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function mapDown(mdp_reward, obr_cost)
+    return mdp_reward - obr_cost
+end
+
+function mapUp(Q_val)
+    return Q_val
+end
+
+gridWorld = GlobalGPSCarWorld(inObstacle, inBadRoad, mapDown, size = gridWorldsize, initPosition = initPosition,numObstacles=1,numBadRoads=1, goalPosition = goalPosition)
+
+
+####################################################
 
 println("INIT POSTION: ", gridWorld.carPosition)
 
