@@ -66,8 +66,8 @@ end
 function main()
 # 1) Initialize grid world ########################
 gridWorldsize = SVector(10,10)
-initPosition = SVector(1,5)
-goalPosition = SVector(10,10)
+initPosition = SVector(3,6)
+goalPosition = SVector(9,2)
 obstacles = [RectangleObstacle(SVector(4,5), SVector(6,9)), RectangleObstacle(SVector(8,1), SVector(8,5))]
 bad_roads = [RectangleObstacle(SVector(5,2), SVector(5,4)), RectangleObstacle(SVector(6,2), SVector(7,2))]
 
@@ -142,6 +142,7 @@ while gridWorld.carPosition != gridWorld.goalPosition
     # Update weights using Q(s,a)
     for s in states(localMDP)
         Qsa = value(localPolicy, s, carAction)
+        #println("Q val s: ", s, " value: ", Qsa)
         success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, -Qsa)
         #println("Update edge weight state: ", s.car)
         if !success

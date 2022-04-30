@@ -278,7 +278,7 @@ module GPSCarFinalProject
         elseif m.obstacles[sp.car]
             r = -50.0
         elseif m.badRoads[sp.car]
-            r = -10.0
+            r = -5.0
         else
             r = 0.0
         end
