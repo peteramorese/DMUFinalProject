@@ -13,6 +13,7 @@ mutable struct DeterministicGridWorld
     G::LabelledGraph # Graph
     rG::LabelledGraph # Reverse Graph
     W::Dict{String, Float64}
+    updated::Dict{String, Bool}
     #rW::Dict{String, Float64}
     grid_size_x::Int
     grid_size_y::Int
@@ -134,8 +135,12 @@ function DeterministicGridWorld(;grid_size_x=10,grid_size_y=10)
     G = LabelledGraph([""], g_)
     r_G = LabelledGraph([""], r_g_)
     W = create_grid!(G, r_G, grid_size_x, grid_size_y)
+    updated = Dict{String, Bool}()
+    for e in keys(W)
+        updated[e] = false 
+    end
     actions = [:left, :right, :up, :down]   # TODO: make this an argument of the constructor
-    DeterministicGridWorld(G, r_G, W, grid_size_x, grid_size_y, actions)
+    DeterministicGridWorld(G, r_G, W, updated, grid_size_x, grid_size_y, actions)
 end
 
 function state_to_str(state::SVector{2,Int})
@@ -153,8 +158,11 @@ function str_to_state(state_str::String)
 end
 
 function update_edge_weight!(dgw::DeterministicGridWorld, edge::String, weight::Float64)
-    if haskey(dgw.W, edge)
-        dgw.W[edge] = weight
+    if haskey(dgw.W, edge)  
+        if !dgw.updated[edge]
+            dgw.W[edge] = weight
+            dgw.updated[edge] = true
+        end
         return true
     else
         return false
@@ -191,8 +199,11 @@ function update_edge_weight!(dgw::DeterministicGridWorld, state::SVector{2,Int},
         return false
     end
     edge = state_lbls_to_edge_lbl(state_to_str(state), state_to_str(dst_state))
-    if haskey(dgw.W, edge)
-        dgw.W[edge] = weight
+    if haskey(dgw.W, edge) 
+        if !dgw.updated[edge]
+            dgw.W[edge] = weight
+            dgw.updated[edge] = true
+        end
         return true
     else
         return false

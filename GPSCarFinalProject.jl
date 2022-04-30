@@ -273,14 +273,14 @@ module GPSCarFinalProject
         # r = -edge_weight (edge weights are a cost)
 
         # If at the goal
-        if sp.car == m.goalPosition
+        if s.car == m.goalPosition
             r = 0.0
-        elseif m.obstacles[sp.car]
+        elseif m.obstacles[s.car]
             r = -50.0
-        elseif m.badRoads[sp.car]
+        elseif m.badRoads[s.car]
             r = -5.0
         else
-            r = 0.0
+            r = -1.0
         end
             # return the "cost" of the edge that connects these states
             #s_str = GridWorldGraph.state_to_str(s.car)  # s is of type GPSCarState (maybe change that)
@@ -290,7 +290,7 @@ module GPSCarFinalProject
             #println(" reward key type: ", typeof(sp.car))
             #println(" rewards keys : ", keys(m.stateWeights))
             #println(" ret val : ", -m.stateWeights[sp.car])
-        return m.mapDown(r, m.stateWeights[sp.car])
+        return m.mapDown(r, m.stateWeights[s.car])
 
         # # Calculate minimum manhattan distance to path to goal
         # xDistToPath = minimum(abs(sp.car[1] - pathCoordinate[1]) for pathCoordinate in m.pathToGoal)

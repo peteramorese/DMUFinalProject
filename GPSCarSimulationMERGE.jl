@@ -94,11 +94,11 @@ function inBadRoad(s::SVector{2, Int})
 end
 
 function mapDown(mdp_reward, obr_cost)
-    return mdp_reward - obr_cost
+    return mdp_reward - obr_cost^2
 end
 
 function mapUp(Q_val)
-    return Q_val
+    return .4*log(-Q_val + 1)
 end
 
 gridWorld = GlobalGPSCarWorld(inObstacle, inBadRoad, mapDown, size = gridWorldsize, initPosition = initPosition,numObstacles=1,numBadRoads=1, goalPosition = goalPosition)
@@ -115,6 +115,8 @@ localSolver = ValueIterationSolver(max_iterations=100, belres=1e-6)
 global totalReward = 0.0
 
 # 6) repeat steps 2-5 until terminated
+trajectory = Vector{SVector{2, Int}}()
+push!(trajectory, gridWorld.carPosition)
 while gridWorld.carPosition != gridWorld.goalPosition
 
     # Initialize weights
@@ -131,6 +133,11 @@ while gridWorld.carPosition != gridWorld.goalPosition
 
     # Take a step using the action calculated by solving MDP
     # TODO: turn this into an "act!" function
+    #println("\n WEIGHTS: ", weights)
+    println("\nPRINTING RELEVANT WEIGHTS: ")
+    for s in states(localMDP)
+        println("  state: ", s.car, " weight: ", weights[s.car])
+    end
     local carAction = action(localPolicy, GPSCarState(gridWorld.carPosition))
     #local carActionDirection = actiondir[carAction] 
     #gridWorld.carPosition = gridWorld.carPosition + carActionDirection
@@ -142,14 +149,20 @@ while gridWorld.carPosition != gridWorld.goalPosition
     # Update weights using Q(s,a)
     for s in states(localMDP)
         Qsa = value(localPolicy, s, carAction)
-        #println("Q val s: ", s, " value: ", Qsa)
-        success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, -Qsa)
+        println("Q val s: ", s, " value: ", Qsa)
+        success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, mapUp(Qsa))
         #println("Update edge weight state: ", s.car)
         if !success
             println("Failed to update edge weights")
             return 0
         end
     end
+    push!(trajectory, gridWorld.carPosition)
+end
+if length(trajectory) < 50
+    println("Trajectory: ", trajectory)
+else
+    println("Trajectory too long to print.")
 end
 
 end
