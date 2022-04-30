@@ -1,10 +1,14 @@
 module OBReachability
+    using Revise
     using LabelledGraphs
     using LightGraphs
     using StaticArrays
     using DataStructures
     include("GridWorldGraph.jl")
     using .GridWorldGraph
+
+    export
+        obr
 
     function print_queue(pq)
         while !isempty(pq)
@@ -25,7 +29,6 @@ module OBReachability
                 visited[s] = false
             end
         end
-        println(states)
         pq = PriorityQueue{SVector{2,Int},Float64}()
     
         # Add starting states the queue
