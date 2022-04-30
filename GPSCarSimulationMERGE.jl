@@ -9,12 +9,15 @@
 =========================================================#
 
 
+using Revise
 include("./GPSCarFinalProject.jl")
-include("GPS/OptimalBackwardsReachability.jl")
+#include("GPS/OptimalBackwardsReachability.jl")
 #include("GPS/GridWorldGraph.jl")
 
 using .GPSCarFinalProject
-using .OBReachability
+using .GPSCarFinalProject.OBReachability
+using .GPSCarFinalProject.OBReachability: obr
+#using .OBReachability
 #using .GridWorldGraph
 
 using POMDPs

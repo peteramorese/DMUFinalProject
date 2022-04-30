@@ -14,6 +14,7 @@ module GPSCarFinalProject
 
     using POMDPs
     using StaticArrays
+    using Revise
     using POMDPModelTools
     using Random
     using Compose
@@ -24,9 +25,12 @@ module GPSCarFinalProject
     using LinearAlgebra
     using OrderedCollections
     
-    include("GPS/GridWorldGraph.jl")
-    using .GridWorldGraph
-    using .GridWorldGraph: DeterministicGridWorld
+    include("GPS/OptimalBackwardsReachability.jl")
+    #using .GridWorldGraph
+    #using .GridWorldGraph: DeterministicGridWorld
+    #import .OBReachability
+    import .OBReachability.GridWorldGraph
+    import .OBReachability.GridWorldGraph: DeterministicGridWorld
 
 
     export

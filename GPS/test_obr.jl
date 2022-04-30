@@ -1,8 +1,13 @@
+#push!(LOAD_PATH, pwd())
+#push!(LOAD_PATH, joinpath(pwd(), "GPS"))
+#println("LOAD_PATH: ", LOAD_PATH)
+using Revise
 using LightGraphs
 using StaticArrays
-include("GridWorldGraph.jl")
-using .GridWorldGraph
 include("OptimalBackwardsReachability.jl")
+#using .OBReachability
+using .OBReachability.GridWorldGraph
+#include("OptimalBackwardsReachability.jl")
 
 # Create Deterministic Grid World
 dgw = GridWorldGraph.DeterministicGridWorld(grid_size_x=3, grid_size_y=3)

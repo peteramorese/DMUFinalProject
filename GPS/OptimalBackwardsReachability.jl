@@ -1,10 +1,14 @@
 module OBReachability
+    using Revise
     using LabelledGraphs
     using LightGraphs
     using StaticArrays
     using DataStructures
     include("GridWorldGraph.jl")
     using .GridWorldGraph
+
+    export
+        obr
 
     function print_queue(pq)
         while !isempty(pq)
