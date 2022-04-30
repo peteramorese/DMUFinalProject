@@ -9,13 +9,13 @@
 =========================================================#
 
 
-# include("./GPSCarFinalProject.jl")
+include("./GPSCarFinalProject.jl")
 include("GPS/OptimalBackwardsReachability.jl")
-include("GPS/GridWorldGraph.jl")
+#include("GPS/GridWorldGraph.jl")
 
 using .GPSCarFinalProject
 using .OBReachability
-using .GridWorldGraph
+#using .GridWorldGraph
 
 using POMDPs
 using POMDPModelTools
@@ -47,10 +47,11 @@ TODO: Main routine will need to be something like
 #    end
 #end
 
+function main()
 # 1) Initialize grid world
 gridWorldsize = SVector(10,10)
 goalPosition = SVector(10,10)
-@show gridWorld = GlobalGPSCarWorld(size = gridWorldsize, initPosition=SVector(2,2),numObstacles=1,numBadRoads=1, goalPosition = goalPosition)
+gridWorld = GlobalGPSCarWorld(size = gridWorldsize, initPosition=SVector(2,2),numObstacles=1,numBadRoads=1, goalPosition = goalPosition)
 
 println("INIT POSTION: ", gridWorld.carPosition)
 
@@ -70,7 +71,7 @@ while gridWorld.carPosition != gridWorld.goalPosition
 
     # Create the local MDP based on the states visible to the car
     local sensorRadius = 1  # the distance in grid world the car can sense around itself
-    local localMDP = LocalGPSCarMDP(gridWorld, gridRadius = sensorRadius)
+    local localMDP = LocalGPSCarMDP(gridWorld, weights, gridRadius = sensorRadius)
 
     # Solve the local MDP
     local localPolicy = solve(localSolver, localMDP)
@@ -78,21 +79,27 @@ while gridWorld.carPosition != gridWorld.goalPosition
     # Take a step using the action calculated by solving MDP
     # TODO: turn this into an "act!" function
     local carAction = action(localPolicy, GPSCarState(gridWorld.carPosition))
-    local carActionDirection = actiondir[carAction] 
-    gridWorld.carPosition = gridWorld.carPosition + carActionDirection
+    #local carActionDirection = actiondir[carAction] 
+    #gridWorld.carPosition = gridWorld.carPosition + carActionDirection
+    println("CURR POSTION: ", gridWorld.carPosition, "CAR ACTION: ", carAction)
+    sp = rand(transition(localMDP, GPSCarState(gridWorld.carPosition), carAction))
+    gridWorld.carPosition = sp.car
     println("NEW POSTION: ", gridWorld.carPosition)
 
     # Update weights using Q(s,a)
     for s in states(localMDP)
         Qsa = value(localPolicy, s, carAction)
-        success = update_edge_weight!(gridWorld.graph, s, carAction, Qsa)
+        success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, -Qsa)
+        #println("Update edge weight state: ", s.car)
         if !success
             println("Failed to update edge weights")
+            return 0
         end
     end
 end
 
-
+end
+main()
 
 
 

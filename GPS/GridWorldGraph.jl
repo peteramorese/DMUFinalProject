@@ -40,6 +40,7 @@ module GridWorldGraph
                 safe_add_vertex!(graph, src_state)
                 safe_add_vertex!(r_graph, src_state)
                 for dir=1:4
+                    stay_put = false
                     if dir == 1 # left
                         if i != 1
                             dst_state = string(string(i-1),",", string(ii))
@@ -53,6 +54,8 @@ module GridWorldGraph
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
                             add_edge!(r_graph, dst_state, src_state)
+                        else
+                            stay_put = true
                         end
                     elseif dir == 2 # right
                         if i != grid_size_x
@@ -67,6 +70,8 @@ module GridWorldGraph
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
                             add_edge!(r_graph, dst_state, src_state)
+                        else
+                            stay_put = true
                         end
                     elseif dir == 3 # down
                         if ii != 1
@@ -81,6 +86,8 @@ module GridWorldGraph
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
                             add_edge!(r_graph, dst_state, src_state)
+                        else
+                            stay_put = true
                         end
                     elseif dir == 4 # up
                         if ii != grid_size_y
@@ -95,7 +102,23 @@ module GridWorldGraph
                             # Connect the graph
                             add_edge!(graph, src_state, dst_state)
                             add_edge!(r_graph, dst_state, src_state)
+                        else
+                            stay_put = true
                         end
+                    end
+                    if stay_put
+                        println("--in stay put!")
+                        dst_state = src_state
+                        safe_add_vertex!(graph, dst_state)
+                        safe_add_vertex!(r_graph, dst_state)
+                        
+                        # Weight the edge
+                        edge_label = state_lbls_to_edge_lbl(src_state, dst_state)
+                        edge_weights[edge_label] = 1.0 # Init value
+
+                        # Connect the graph
+                        add_edge!(graph, src_state, dst_state)
+                        add_edge!(r_graph, dst_state, src_state)
                     end
                 end
             end
@@ -143,24 +166,28 @@ module GridWorldGraph
         # Check if action is allowed:
         if action == :left
             if state[1] == 1
-                return false
+                dst_state = state
+            else
+                dst_state = SVector{2,Int}(state[1] - 1, state[2])
             end
-            dst_state = SVector{2,Int}(state[1] - 1, state[2])
         elseif action == :right
             if state[1] == dgw.grid_size_x
-                return false
+                dst_state = state
+            else
+                dst_state = SVector{2,Int}(state[1] + 1, state[2])
             end
-            dst_state = SVector{2,Int}(state[1] + 1, state[2])
         elseif action == :down
             if state[2] == 1
-                return false
+                dst_state = state
+            else
+                dst_state = SVector{2,Int}(state[1], state[2] - 1)
             end
-            dst_state = SVector{2,Int}(state[1], state[2] - 1)
         elseif action == :up
             if state[2] == dgw.grid_size_y
-                return false
+                dst_state = state
+            else
+                dst_state = SVector{2,Int}(state[1], state[2] + 1)
             end
-            dst_state = SVector{2,Int}(state[1], state[2] + 1)
         else
             return false
         end
@@ -175,8 +202,12 @@ module GridWorldGraph
 
     function update_state_weight!(dgw::DeterministicGridWorld, state::SVector{2,Int}, weight::Float64) 
         for a in dgw.actions
-            update_edge_weight!(dgw, state, a, weight)
+            if !update_edge_weight!(dgw, state, a, weight)
+                println("Failed to update edge. State: ", state, " action ", a)
+                return false
+            end
         end
+        return true
     end
 
 end

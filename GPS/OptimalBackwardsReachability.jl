@@ -25,7 +25,6 @@ module OBReachability
                 visited[s] = false
             end
         end
-        println(states)
         pq = PriorityQueue{SVector{2,Int},Float64}()
     
         # Add starting states the queue
