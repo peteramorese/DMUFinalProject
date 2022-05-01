@@ -50,7 +50,7 @@ module GPSCarFinalProject
         badRoads::Dict{SVector{2, Int}, Bool}   # Dictionary that maps a state to a boolean indicating if that state is inside a bad road
         #onBadRoad::BitArray{2}                 # Array that stores whether or not a position is on a bad road
         goalPosition::SVector{2, Int}           # Goal x,y coordinates in grid world
-        # pathToGoal::Vector                      # Ordered list of coordinates that go from car to goal  TODO: can probably get rid of this
+        pathToGoal::Vector                      # Ordered list of coordinates that go from car to goal  TODO: can probably get rid of this
         graph::DeterministicGridWorld           # Graph representation of grid world
         mapDown                                 # Maps global cost to local cost
         #mapUp                                  # Maps local cost to global cost
@@ -103,15 +103,15 @@ module GPSCarFinalProject
         #end
 
         # Initialize path to goal as an empty array
-        # pathToGoal = SVector{2, Int}[]
+        pathToGoal = SVector{2, Int}[]
       
         # Create the graph representation of grid world
         # TODO: need to make graph aware of obstacles
         # println("Creating graph...")
         graph = GridWorldGraph.DeterministicGridWorld(grid_size_x = size[1], grid_size_y = size[2])
 
-        # GlobalGPSCarWorld(size, initPosition, obstacles, badRoads, goalPosition, pathToGoal, graph, mapDown)
-        GlobalGPSCarWorld(size, initPosition, obstacles, badRoads, goalPosition, graph, mapDown)        
+        GlobalGPSCarWorld(size, initPosition, obstacles, badRoads, goalPosition, pathToGoal, graph, mapDown)
+        # GlobalGPSCarWorld(size, initPosition, obstacles, badRoads, goalPosition, graph, mapDown)        
     end #= GlobalGPSCarWorld =#
 
 
