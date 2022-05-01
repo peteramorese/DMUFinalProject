@@ -127,7 +127,6 @@ function create_grid!(graph::LabelledGraph, r_graph::LabelledGraph, grid_size_x:
 end
 
 # CTOR
-# TODO: this will need to be called in the constructor of GlobalGPSCarWorld 
 function DeterministicGridWorld(;grid_size_x=10,grid_size_y=10)
     println("Creating graph...")
     g_ = path_digraph(1)
