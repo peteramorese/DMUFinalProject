@@ -47,7 +47,7 @@ function GPSCarVisualization(gridWorld::GlobalGPSCarWorld, trajectory::Vector{SV
     A = gridWorld.obstacles
     B = gridWorld.badRoads
 
-    Obs_Tmp = []
+    Obs_Tmp = []    # Cannot preallocate as Int64 or Float64 it will give errors
     BRs_Tmp = []
 
     for (k,v) in A
@@ -122,5 +122,7 @@ function GPSCarVisualization(gridWorld::GlobalGPSCarWorld, trajectory::Vector{SV
                 yticks = collect(0:1:size(Path)[1]))
     end
     gif(anim, gifFileName, fps = 4)
+
+    global p = plot()  # Erase global plot object 
 
 end #= GPSCarVisualization =#

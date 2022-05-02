@@ -25,7 +25,7 @@ CURRENT_DIR = pwd();        # Current directory
 
 # Custom modules
 include("./GPSCarFinalProject.jl")
-include("GPS/OptimalBackwardsReachability.jl")
+include("GPS/OptimalBackwardsReachability.jl") 
 include("./GPSCarVisualization.jl")
 
 using .GPSCarFinalProject
@@ -40,14 +40,14 @@ using POMDPSimulators
 using StaticArrays
 using DiscreteValueIteration
 using Plots
+using Statistics
 
 import GridWorlds as GW
 
-
 # Main simulation routine
 function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
-    println("BEGINNING GPS CAR SIMULATION...")
-    println("INIT POSTION: ", gridWorld.carPosition)
+    #println("BEGINNING GPS CAR SIMULATION...")
+    #println("INIT POSTION: ", gridWorld.carPosition)
 
     # Create a goal position vector for backward reachability algorithm
     goalPositionVec = Vector{SVector{2, Int}}()
@@ -85,16 +85,16 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
 
         # Take a step using the action calculated by solving the globally-influenced local MDP
         # TODO: turn this into an "act!" function
-        println("\nPRINTING RELEVANT WEIGHTS: ")
+        #println("\nPRINTING RELEVANT WEIGHTS: ")
         for s in states(localMDP)
-            println("  state: ", s.car, " weight: ", weights[s.car])
+            #println("  state: ", s.car, " weight: ", weights[s.car])
         end
         local carAction = action(localPolicy, GPSCarState(gridWorld.carPosition))
 
-        println("CURR POSTION: ", gridWorld.carPosition, " CAR ACTION: ", carAction)
+        #println("CURR POSTION: ", gridWorld.carPosition, " CAR ACTION: ", carAction)
         sp = rand(transition(localMDP, GPSCarState(gridWorld.carPosition), carAction))
         gridWorld.carPosition = sp.car
-        println("NEW POSTION: ", gridWorld.carPosition)
+        #println("NEW POSTION: ", gridWorld.carPosition)
 
         # Collect the reward from this transition
         totalReward += reward(localMDP_zeroStateWeights, gridWorld.carPosition, carAction, sp)
@@ -106,7 +106,7 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
             # Using the solution without obr bias
             Qsa = value(localPolicy_zeroStateWeights, s, carAction)
 
-            println("Q val s: ", s, " value: ", Qsa) 
+            #println("Q val s: ", s, " value: ", Qsa) 
             success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, -Qsa)
 
             if !success
@@ -125,15 +125,48 @@ end #= GPSCarSimulation =#
 
 
 
-function main()
-    # 1st gridworld definition
+function main(runIndex, generateGraphics)
+    
     gridWorldsize = SVector(10,10)
+
+    # Gridworlds below 
+    # Env 1
+    #=
+    Label = "GW1_R"
     initPosition = SVector(3,6)
     goalPosition = SVector(9,2)
-
     obstacles = [RectangleObstacle(SVector(4,5), SVector(6,9)), RectangleObstacle(SVector(8,1), SVector(8,5)), RectangleObstacle(SVector(1,9), SVector(2,10)),
                 RectangleObstacle(SVector(9,9), SVector(10,10)), RectangleObstacle(SVector(1,1), SVector(2,2))]
     badRoads = [RectangleObstacle(SVector(5,2), SVector(5,4)), RectangleObstacle(SVector(6,2), SVector(7,2))]
+    =#
+
+    # Env 2
+    #=
+    Label = "GW2_R"
+    initPosition = SVector(2,2)
+    goalPosition = SVector(10,2)
+    obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
+                RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
+                RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
+    
+    badRoads = [RectangleObstacle(SVector(1,8), SVector(8,8)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
+    =#
+
+    # Env 3
+    # Functionally the same as Env 2 however the band of bad road is bigger in the north
+    # 
+    Label = "GW3_R"
+    initPosition = SVector(2,2)
+    goalPosition = SVector(10,2)
+    obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
+                RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
+                RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
+    
+    badRoads = [RectangleObstacle(SVector(1,8), SVector(8,10)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
+    #
+
+    # Random environment
+
 
     function mapDown(mdp_reward, obr_cost)
         return mdp_reward - obr_cost^2
@@ -145,6 +178,7 @@ function main()
     totalReward, trajectory = GPSCarSimulation(gridWorld)
     
     # Debugging: print trajectory information
+    #=
     if length(trajectory) < 50
         println("Trajectory: ", trajectory)
     else
@@ -157,17 +191,45 @@ function main()
             println("Trajectory enters obstacle: ", pos)
         end
     end
+    =#
 
     # Generate visualization from simulation of 1st grid world
-    GPSCarVisualization(gridWorld, trajectory, pngFileName = "GridWorld_1_Plot.png", gifFileName = "GridWorld_1_Trajectory.gif")
 
+    if generateGraphics
+        GPSCarVisualization(gridWorld, trajectory, pngFileName = string(Label, runIndex, "_Plot.png"), 
+                        gifFileName = string(Label, runIndex ,"_Trajectory.gif"))
+    end
 
+    return totalReward, trajectory
+    
 end #= main =#
 
 # ====================================================================================================
-main()
+
+# Benchmarking Tests
+timeStart = time() # Start Time 
+
+totalReward_List = Float64[]   
+trajLength_List = Int64[]
+
+n = 1 # Number of trials
+generateGraphics = false
+
+for i = 1:n
+    tR, tL = main(i, generateGraphics)
+    push!(totalReward_List, tR)
+    push!(trajLength_List, length(tL))
+end
+
+timeElapsed = time()-timeStart # timeElapsed
+
+avgTime = timeElapsed/n # Compute average run time per run
+avgTrajLength = mean(trajLength_List) # Average trajectory length
+avgTotalReward = mean(totalReward_List) # Average total reward 
+
+println("Average Computation Time: ", round(avgTime, digits = 4))
+println("Average Trajectory Length: ", round(avgTrajLength, digits = 4))
+println("Average Total Reward: ", round(avgTotalReward, digits = 4))
 
 
-
-   
 

@@ -140,7 +140,7 @@ module GridWorldGraph
 
     # CTOR
     function DeterministicGridWorld(;grid_size_x=10,grid_size_y=10)
-        println("Creating graph...")
+        #println("Creating graph...")
         g_ = path_digraph(1)
         r_g_ = path_digraph(1)
         G = LabelledGraph([""], g_)

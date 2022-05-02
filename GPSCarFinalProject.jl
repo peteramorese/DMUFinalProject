@@ -231,7 +231,7 @@ module GPSCarFinalProject
         
         if rand() < epsilon
             a = rand(actions(m))
-            println("Took random action: ", a)
+            # println("Took random action: ", a)
         end
 
         change = actiondir[a]
