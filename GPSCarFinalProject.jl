@@ -185,10 +185,10 @@ module GPSCarFinalProject
 
 
     # Dictionary that maps actions to indices
-    const actionind = Dict(:left=>1, :right=>2, :up=>3, :down=>4)
+    const actionind = Dict(:left=>1, :right=>2, :up=>3, :down=>4, :stay=>5)
 
     # Dictionary that translates action symbols into grid world directions
-    const actiondir = Dict(:left=>SVector(-1,0), :right=>SVector(1,0), :up=>SVector(0, 1), :down=>SVector(0,-1))
+    const actiondir = Dict(:left=>SVector(-1,0), :right=>SVector(1,0), :up=>SVector(0, 1), :down=>SVector(0,-1), :stay=>SVector(0,0))
 
     # Function determines new position based on desired change in position and size of grid world
     function bounce(m::LocalGPSCarMDP, pos::SVector, change::SVector)
@@ -216,7 +216,7 @@ module GPSCarFinalProject
         m.stateIdxDict[s] 
     end
 
-    POMDPs.actions(m::LocalGPSCarMDP) = (:left, :right, :up, :down)
+    POMDPs.actions(m::LocalGPSCarMDP) = (:left, :right, :up, :down, :stay)
 
     function POMDPs.actionindex(m::LocalGPSCarMDP, a) 
         actionind[a]
@@ -227,7 +227,7 @@ module GPSCarFinalProject
     function POMDPs.transition(m::LocalGPSCarMDP, s, a)
         
         # 5% of the time, take a random action
-        epsilon = 0.05
+        epsilon = 0.00
         
         if rand() < epsilon
             a = rand(actions(m))
@@ -255,24 +255,28 @@ module GPSCarFinalProject
     function POMDPs.reward(m::LocalGPSCarMDP, s, a, sp)
         # TODO: what happens if we use s instead sp?
 
+        #println("s type: ", typeof(s))
+        #println("a type: ", typeof(a))
+        #println("sp type: ", typeof(sp))
         # If at the goal
-        if sp.car == m.goalPosition
+        if s.car == m.goalPosition
             r = 0.0
         # If on an obstacle
-        elseif m.obstacles[sp.car]
-            r = -5000000.0
+        elseif m.obstacles[s.car]
+            r = -200.0
         
         # If on a bad road
-        elseif m.badRoads[sp.car]
-            r = -500.0
+        elseif m.badRoads[s.car]
+            r = -50.0
         
         # Otherwise, the local reward is just -1 for taking a step
         else
-            r = -1.0    
+            r = -.1    
+            #r = 0.0    
         end
 
         # The returned reward includes the local reward and the cost of the new state determined by global planner
-        return m.mapDown(r, m.stateWeights[sp.car])
+        return m.mapDown(r, m.stateWeights[s.car])
 
     end #= reward =#
 

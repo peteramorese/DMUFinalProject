@@ -68,8 +68,12 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
         weights = OBReachability.obr(gridWorld.graph, goalPositionVec)
 
         # Create the local MDP based on the states visible to the car and the weights from the global planner
-        local sensorRadius = 3  # the distance in grid world the car can sense around itself    # TODO: make this an argument of GlobalGPSCarWorld
+        local sensorRadius = 2  # the distance in grid world the car can sense around itself    # TODO: make this an argument of GlobalGPSCarWorld
         local localMDP = LocalGPSCarMDP(gridWorld, weights, gridRadius = sensorRadius)
+        println("\nPRINTING RELEVANT WEIGHTS: ")
+        for s in states(localMDP)
+            println("  state: ", s.car, " weight: ", weights[s.car])
+        end
         
         # Solve the local MDP
         local localPolicy = solve(localSolver, localMDP)
@@ -82,22 +86,18 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
         end
         local localPolicy_zeroStateWeights = solve(localSolver, localMDP_zeroStateWeights)
 
-
         # Take a step using the action calculated by solving the globally-influenced local MDP
         # TODO: turn this into an "act!" function
-        #println("\nPRINTING RELEVANT WEIGHTS: ")
-        for s in states(localMDP)
-            #println("  state: ", s.car, " weight: ", weights[s.car])
-        end
         local carAction = action(localPolicy, GPSCarState(gridWorld.carPosition))
+        println("CURR POSTION: ", gridWorld.carPosition, " CAR ACTION: ", carAction)
 
-        #println("CURR POSTION: ", gridWorld.carPosition, " CAR ACTION: ", carAction)
         sp = rand(transition(localMDP, GPSCarState(gridWorld.carPosition), carAction))
         gridWorld.carPosition = sp.car
-        #println("NEW POSTION: ", gridWorld.carPosition)
+        println("NEW POSTION: ", gridWorld.carPosition)
 
         # Collect the reward from this transition
-        totalReward += reward(localMDP_zeroStateWeights, gridWorld.carPosition, carAction, sp)
+        #println("typeof gw.carposition : ", typeof(gridWorld.carPosition))
+        totalReward += reward(localMDP_zeroStateWeights, GPSCarState(gridWorld.carPosition), carAction, sp)
 
         # Update state weights in the global planner using Q(s,a)
         # Note that the weights going into and coming out of obr must be positive 
@@ -106,14 +106,18 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
             # Using the solution without obr bias
             Qsa = value(localPolicy_zeroStateWeights, s, carAction)
 
-            #println("Q val s: ", s, " value: ", Qsa) 
+
+            #println("  Q val s: ", s, " value: ", Qsa) 
             success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, -Qsa)
 
             if !success
                 println("Failed to update state weights")
                 return 0
             end
+            # test
         end
+        #println("   bop  ")
+        #return 0
         
         push!(trajectory, gridWorld.carPosition)
     end
@@ -131,45 +135,41 @@ function main(runIndex, generateGraphics)
 
     # Gridworlds below 
     # Env 1
-    #=
     Label = "GW1_R"
     initPosition = SVector(3,6)
     goalPosition = SVector(9,2)
     obstacles = [RectangleObstacle(SVector(4,5), SVector(6,9)), RectangleObstacle(SVector(8,1), SVector(8,5)), RectangleObstacle(SVector(1,9), SVector(2,10)),
                 RectangleObstacle(SVector(9,9), SVector(10,10)), RectangleObstacle(SVector(1,1), SVector(2,2))]
     badRoads = [RectangleObstacle(SVector(5,2), SVector(5,4)), RectangleObstacle(SVector(6,2), SVector(7,2))]
-    =#
 
     # Env 2
-    #=
-    Label = "GW2_R"
-    initPosition = SVector(2,2)
-    goalPosition = SVector(10,2)
-    obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
-                RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
-                RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
+    #Label = "GW2_R"
+    #initPosition = SVector(2,2)
+    #goalPosition = SVector(10,2)
+    #obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
+    #            RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
+    #            RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
     
-    badRoads = [RectangleObstacle(SVector(1,8), SVector(8,8)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
-    =#
+    #badRoads = [RectangleObstacle(SVector(1,8), SVector(8,8)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
 
     # Env 3
     # Functionally the same as Env 2 however the band of bad road is bigger in the north
     # 
-    Label = "GW3_R"
-    initPosition = SVector(2,2)
-    goalPosition = SVector(10,2)
-    obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
-                RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
-                RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
+    #Label = "GW3_R"
+    #initPosition = SVector(2,2)
+    #goalPosition = SVector(10,2)
+    #obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
+    #            RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
+    #            RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
     
-    badRoads = [RectangleObstacle(SVector(1,8), SVector(8,10)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
+    #badRoads = [RectangleObstacle(SVector(1,8), SVector(8,10)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
     #
 
     # Random environment
 
 
     function mapDown(mdp_reward, obr_cost)
-        return mdp_reward - obr_cost^2
+        return mdp_reward - obr_cost
     end
 
     gridWorld = GlobalGPSCarWorld(obstacles, badRoads, mapDown, size = gridWorldsize, initPosition = initPosition, goalPosition = goalPosition)
