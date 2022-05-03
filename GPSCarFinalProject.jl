@@ -227,7 +227,7 @@ module GPSCarFinalProject
     function POMDPs.transition(m::LocalGPSCarMDP, s, a)
         
         # 5% of the time, take a random action
-        epsilon = 0.2
+        epsilon = 0.05
         
         if rand() < epsilon
             a = rand(actions(m))
@@ -263,7 +263,7 @@ module GPSCarFinalProject
             r = 0.0
         # If on an obstacle
         elseif m.obstacles[s.car]
-            r = -500.0 
+            r = -2000.0 
         
         # If on a bad road
         elseif m.badRoads[s.car]
