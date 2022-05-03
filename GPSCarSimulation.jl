@@ -68,7 +68,7 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
         weights = OBReachability.obr(gridWorld.graph, goalPositionVec)
 
         # Create the local MDP based on the states visible to the car and the weights from the global planner
-        local sensorRadius = 1  # the distance in grid world the car can sense around itself    # TODO: make this an argument of GlobalGPSCarWorld
+        local sensorRadius = 3  # the distance in grid world the car can sense around itself    # TODO: make this an argument of GlobalGPSCarWorld
         local localMDP = LocalGPSCarMDP(gridWorld, weights, gridRadius = sensorRadius)
         
         # Solve the local MDP
@@ -213,7 +213,7 @@ totalReward_List = Float64[]
 trajLength_List = Int64[]
 
 n = 1 # Number of trials
-generateGraphics = false
+generateGraphics = true
 
 for i = 1:n
     tR, tL = main(i, generateGraphics)

@@ -260,7 +260,7 @@ module GPSCarFinalProject
             r = 0.0
         # If on an obstacle
         elseif m.obstacles[sp.car]
-            r = -1000.0
+            r = -5000000.0
         
         # If on a bad road
         elseif m.badRoads[sp.car]

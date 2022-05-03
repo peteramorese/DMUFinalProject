@@ -31,6 +31,9 @@ import GridWorlds as GW
 
 function GPSCarVisualization(gridWorld::GlobalGPSCarWorld, trajectory::Vector{SVector{2, Int}}; pngFileName = "StaticCarProblemPlot.png", gifFileName = "CarTrajectory.gif")
     
+    Dim = gridWorld.size
+    #println("Dim: ", Dim[1])
+
     # Convert pathToGoal to matrix
     # Path = zeros(length(gridWorld.pathToGoal), 2) # Car's path
     Path = zeros(length(trajectory), 2) # Car's path
@@ -118,11 +121,11 @@ function GPSCarVisualization(gridWorld::GlobalGPSCarWorld, trajectory::Vector{SV
         # plot(p, rectangle(1,1,Path[1,1],Path[1,2]), color = "Yellow", legend = :outertopright, label = "Start Position")
         scatter(p, (Vis_Path[i,1], Vis_Path[i,2]), label = "Car Position",  legend = :outertopright,
                 xlim = [1, gridWorld.size[1]+1], ylim = [1, gridWorld.size[2]+1], color = "Black",
-                xticks = collect(0:1:size(Path)[1]), 
-                yticks = collect(0:1:size(Path)[1]))
+                xticks = collect(0:1:(Dim[1]+1)), 
+                yticks = collect(0:1:(Dim[2])+1))
     end
     gif(anim, gifFileName, fps = 4)
 
-    global p = plot()  # Erase global plot object 
+    global p = plot()  # Erase global plot object to cleanly generate next plot 
 
 end #= GPSCarVisualization =#
