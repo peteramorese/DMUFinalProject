@@ -222,7 +222,7 @@ module GPSCarFinalProject
         actionind[a]
     end
 
-    POMDPs.discount(m::LocalGPSCarMDP) = 0.95
+    POMDPs.discount(m::LocalGPSCarMDP) = 0.55
     
     function POMDPs.transition(m::LocalGPSCarMDP, s, a)
         
@@ -267,7 +267,7 @@ module GPSCarFinalProject
         
         # If on a bad road
         elseif m.badRoads[s.car]
-            r = -50.0
+            r = -100.0
         
         # Otherwise, the local reward is just -1 for taking a step
         else

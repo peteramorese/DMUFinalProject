@@ -80,7 +80,7 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
 
         # Solve the local MDP without knowledge of the global planner
         # The point of this is to remove circular dependency (global depends on local which depends on global...)
-        localMDP_zeroStateWeights =  LocalGPSCarMDP(gridWorld, weights, gridRadius = sensorRadius)
+        localMDP_zeroStateWeights = LocalGPSCarMDP(gridWorld, weights, gridRadius = sensorRadius)
         for s in states(localMDP_zeroStateWeights)
             localMDP_zeroStateWeights.stateWeights[s.car] = 0.0
         end
@@ -88,6 +88,7 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
 
         # Take a step using the action calculated by solving the globally-influenced local MDP
         # TODO: turn this into an "act!" function
+        #carAction = argmax([(value(localPolicy_zeroStateWeights, s, a) - weights[gridWorld.carPosition] for a in actions(localMDP)],)
         local carAction = action(localPolicy, GPSCarState(gridWorld.carPosition))
         println("CURR POSTION: ", gridWorld.carPosition, " CAR ACTION: ", carAction)
 
@@ -104,10 +105,13 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
         for s in states(localMDP)
     
             # Using the solution without obr bias
-            Qsa = value(localPolicy_zeroStateWeights, s, carAction)
+            #Qsa = value(localPolicy_zeroStateWeights, s, carAction)
+            Qsa = value(localPolicy_zeroStateWeights, s)
+            #Qsa_a = value(localPolicy, s, carAction)
+            Qsa_a = value(localPolicy, s)
 
 
-            #println("  Q val s: ", s, " value: ", Qsa) 
+            println("  Q val s: ", s, " natural value: ", Qsa, " combined value: ", Qsa_a, " reward: ", reward(localMDP, s, carAction, s)) 
             success = GPSCarFinalProject.GridWorldGraph.update_state_weight!(gridWorld.graph, s.car, -Qsa)
 
             if !success
