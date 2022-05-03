@@ -68,7 +68,7 @@ function GPSCarSimulation(gridWorld::GlobalGPSCarWorld; maxSteps = 10000)
         weights = OBReachability.obr(gridWorld.graph, goalPositionVec)
 
         # Create the local MDP based on the states visible to the car and the weights from the global planner
-        local sensorRadius = 2  # the distance in grid world the car can sense around itself    # TODO: make this an argument of GlobalGPSCarWorld
+        local sensorRadius = 5  # the distance in grid world the car can sense around itself    # TODO: make this an argument of GlobalGPSCarWorld
         local localMDP = LocalGPSCarMDP(gridWorld, weights, gridRadius = sensorRadius)
         println("\nPRINTING RELEVANT WEIGHTS: ")
         for s in states(localMDP)
@@ -163,12 +163,12 @@ function main(runIndex, generateGraphics)
     # Env 3
     # This environment has a narrow short path srounded by obstacles and a long path
     #
-    gridWorldsize = SVector(30,30)
-    Label = "GW3_R"
-    initPosition = SVector(2,2)
-    goalPosition = SVector(8,20)
-    obstacles = [RectangleObstacle(SVector(4,5), SVector(4,30)), RectangleObstacle(SVector(6,5), SVector(6,15)), RectangleObstacle(SVector(7,11), SVector(23,11))]
-    badRoads = [RectangleObstacle(SVector(20,24), SVector(22,26))]
+    #gridWorldsize = SVector(30,30)
+    #Label = "GW3_R"
+    #initPosition = SVector(2,2)
+    #goalPosition = SVector(8,20)
+    #obstacles = [RectangleObstacle(SVector(4,5), SVector(4,30)), RectangleObstacle(SVector(6,5), SVector(6,15)), RectangleObstacle(SVector(7,11), SVector(23,11))]
+    #badRoads = [RectangleObstacle(SVector(20,24), SVector(22,26))]
     #
 
     # Env 4
@@ -184,6 +184,17 @@ function main(runIndex, generateGraphics)
     
     badRoads = [RectangleObstacle(SVector(1,8), SVector(8,10)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
     =#
+
+    # Env 3
+    # This environment has a narrow short path srounded by obstacles and a long path
+    #
+    gridWorldsize = SVector(30,30)
+    Label = "GW3_R"
+    initPosition = SVector(2,2)
+    goalPosition = SVector(3,20)
+    obstacles = [RectangleObstacle(SVector(4,5), SVector(4,15)), RectangleObstacle(SVector(6,5), SVector(6,15)), RectangleObstacle(SVector(7,11), SVector(23,11)), RectangleObstacle(SVector(1,11), SVector(4,11))]
+    badRoads = [RectangleObstacle(SVector(20,24), SVector(22,26))]
+    #
 
     # Random environment
 
