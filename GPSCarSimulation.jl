@@ -131,42 +131,57 @@ end #= GPSCarSimulation =#
 
 function main(runIndex, generateGraphics)
     
-    gridWorldsize = SVector(10,10)
-
     # Gridworlds below 
     # Env 1
+    # This environment should  encourage the robot to head around the bad roads and go the long way
+    #=
+    gridWorldsize = SVector(10,10)
     Label = "GW1_R"
     initPosition = SVector(3,6)
     goalPosition = SVector(9,2)
     obstacles = [RectangleObstacle(SVector(4,5), SVector(6,9)), RectangleObstacle(SVector(8,1), SVector(8,5)), RectangleObstacle(SVector(1,9), SVector(2,10)),
                 RectangleObstacle(SVector(9,9), SVector(10,10)), RectangleObstacle(SVector(1,1), SVector(2,2))]
     badRoads = [RectangleObstacle(SVector(5,2), SVector(5,4)), RectangleObstacle(SVector(6,2), SVector(7,2))]
+    =#
 
     # Env 2
-    #Label = "GW2_R"
-    #initPosition = SVector(2,2)
-    #goalPosition = SVector(10,2)
-    #obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
-    #            RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
-    #            RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
-    
-    #badRoads = [RectangleObstacle(SVector(1,8), SVector(8,8)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
+    # Modified Env 1 that has a block in (6,10) to encourage robot to head over bad road
+    #=
+    gridWorldsize = SVector(10,10)
+    Label = "GW2_R"
+    initPosition = SVector(3,6)
+    goalPosition = SVector(9,2)
+    obstacles = [RectangleObstacle(SVector(4,5), SVector(6,9)), RectangleObstacle(SVector(8,1), SVector(8,5)), RectangleObstacle(SVector(1,9), SVector(2,10)),
+                RectangleObstacle(SVector(9,9), SVector(10,10)), RectangleObstacle(SVector(1,1), SVector(2,2)), RectangleObstacle(SVector(6,10), SVector(6,10))]
+    badRoads = [RectangleObstacle(SVector(5,2), SVector(5,4)), RectangleObstacle(SVector(6,2), SVector(7,2))]
+    =#
 
     # Env 3
-    # Functionally the same as Env 2 however the band of bad road is bigger in the north
-    # 
-    #Label = "GW3_R"
-    #initPosition = SVector(2,2)
-    #goalPosition = SVector(10,2)
-    #obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
-    #            RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
-    #            RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
-    
-    #badRoads = [RectangleObstacle(SVector(1,8), SVector(8,10)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
+    # This environment has a narrow short path srounded by obstacles and a long path
+    #
+    gridWorldsize = SVector(30,30)
+    Label = "GW3_R"
+    initPosition = SVector(2,2)
+    goalPosition = SVector(8,20)
+    obstacles = [RectangleObstacle(SVector(4,5), SVector(4,30)), RectangleObstacle(SVector(6,5), SVector(6,15)), RectangleObstacle(SVector(7,11), SVector(23,11))]
+    badRoads = [RectangleObstacle(SVector(20,24), SVector(22,26))]
     #
 
-    # Random environment
+    # Env 4
+    # Fragmeted map 
+    #= 
+    gridWorldsize = SVector(10,10)
+    Label = "GW4_R"
+    initPosition = SVector(2,2)
+    goalPosition = SVector(10,2)
+    obstacles = [RectangleObstacle(SVector(1,5), SVector(2,5)), RectangleObstacle(SVector(4,5), SVector(4,7)), RectangleObstacle(SVector(4,1), SVector(4,3)),
+                RectangleObstacle(SVector(6,1), SVector(6,1)), RectangleObstacle(SVector(6,3), SVector(6,4)), RectangleObstacle(SVector(6,6), SVector(6,8)),
+                RectangleObstacle(SVector(8,1), SVector(8,1)), RectangleObstacle(SVector(8,3), SVector(8,4)), RectangleObstacle(SVector(8,6), SVector(8,6))]
+    
+    badRoads = [RectangleObstacle(SVector(1,8), SVector(8,10)), RectangleObstacle(SVector(7,1), SVector(7,1)), RectangleObstacle(SVector(7,5), SVector(7,5))]
+    =#
 
+    # Random environment
 
     function mapDown(mdp_reward, obr_cost)
         return mdp_reward - obr_cost

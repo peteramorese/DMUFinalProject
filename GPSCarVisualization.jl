@@ -110,19 +110,19 @@ function GPSCarVisualization(gridWorld::GlobalGPSCarWorld, trajectory::Vector{SV
     Vis_Path = Path .+ 0.5
     # The +0.5 offset in path is to center the pathlines to be in the center of the grid space
     plot!(p, Vis_Path[:,1], Vis_Path[:,2], xlim = [1, gridWorld.size[1]+1], ylim = [1, gridWorld.size[2]+1],
-        label = "Trajectory", c = "SkyBlue", linewidth = 3, xticks = collect(0:1:size(Path)[1]), 
-        yticks = collect(0:1:size(Path)[1]), linestyle = :dash)
-
+        label = "Trajectory", c = "SkyBlue", linewidth = 3, xticks = collect(0:round(Dim[1]/15):(Dim[1])+1), 
+        yticks = collect(0:round(Dim[2]/15):(Dim[2]+1)), linestyle = :dash)
+    
     savefig(p, pngFileName)
 
     # Create animation of trajectory 
     anim = @animate for i in 1:size(Vis_Path)[1]-1
         # println("X: ", Vis_Path[i,1])
-        # plot(p, rectangle(1,1,Path[1,1],Path[1,2]), color = "Yellow", legend = :outertopright, label = "Start Position")
+        
         scatter(p, (Vis_Path[i,1], Vis_Path[i,2]), label = "Car Position",  legend = :outertopright,
-                xlim = [1, gridWorld.size[1]+1], ylim = [1, gridWorld.size[2]+1], color = "Black",
-                xticks = collect(0:1:(Dim[1]+1)), 
-                yticks = collect(0:1:(Dim[2])+1))
+            xlim = [1, gridWorld.size[1]+1], ylim = [1, gridWorld.size[2]+1], color = "Black",
+            xticks = collect(0:round(Dim[1]/15):(Dim[1]+1)), 
+            yticks = collect(0:round(Dim[2]/15):(Dim[2])+1))
     end
     gif(anim, gifFileName, fps = 4)
 
